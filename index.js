@@ -12,20 +12,43 @@ app.get("/", (req, res) => {
 app.post("/tts", async (req, res) => {
   try {
     const key = process.env.FISH_API_KEY;
+
     if (!key) {
-      return res.status(500).json({ error: "API key is not configured" });
+      return res.status(500).json({
+        error: "API key is not configured"
+      });
     }
 
     const text = req.body?.text;
-    if (typeof text !== "string" || !text.trim() || text.length > 2000) {
-      return res.status(400).json({ error: "Text must be 1–2000 characters" });
+    const voiceId =
+      req.body?.reference_id ||
+      process.env.FISH_VOICE_ID ||
+      "e3856b21a37d4a648395292b21539d45";
+
+    if (
+      typeof text !== "string" ||
+      !text.trim() ||
+      text.length > 2000
+    ) {
+      return res.status(400).json({
+        error: "Text must be 1-2000 characters"
+      });
+    }
+
+    if (
+      typeof voiceId !== "string" ||
+      !/^[a-zA-Z0-9_-]{1,100}$/.test(voiceId)
+    ) {
+      return res.status(400).json({
+        error: "Invalid Voice ID"
+      });
     }
 
     const response = await axios.post(
       "https://api.fish.audio/v1/tts",
       {
         text: text.trim(),
-        reference_id: process.env.FISH_VOICE_ID || "e3856b21a37d4a648395292b21539d45",
+        reference_id: voiceId,
         format: "mp3"
       },
       {
@@ -42,10 +65,19 @@ app.post("/tts", async (req, res) => {
     res.set("Content-Type", "audio/mpeg");
     res.send(Buffer.from(response.data));
   } catch (err) {
-    console.error("Fish Audio error:", err.response?.status || err.message);
-    res.status(502).json({ error: "Fish Audio request failed" });
+    console.error(
+      "Fish Audio error:",
+      err.response?.status || err.message
+    );
+
+    res.status(502).json({
+      error: "Fish Audio request failed"
+    });
   }
 });
 
 const port = process.env.PORT || 3000;
-app.listen(port, () => console.log(`SHANTO API listening on ${port}`));
+
+app.listen(port, () => {
+  console.log(`SHANTO API listening on ${port}`);
+});
